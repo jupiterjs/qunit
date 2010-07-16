@@ -58,7 +58,7 @@ var QUnit = {
 			config.moduleStats = { all: 0, bad: 0 };
 
 			QUnit.moduleStart( name, testEnvironment );
-		});
+		}, true);
 	},
 
 	asyncTest: function(testName, expected, callback) {
@@ -128,9 +128,9 @@ var QUnit = {
 			} catch(e) {
 				QUnit.ok( false, "Setup failed on " + name + ": " + e.message );
 			}
-    });
+    	}, true);
 
-    synchronize(function() {
+    	synchronize(function() {
 			if ( async ) {
 				QUnit.stop();
 			}
@@ -148,7 +148,7 @@ var QUnit = {
 					start();
 				}
 			}
-		});
+		}, true);
 
 		synchronize(function() {
 			try {
@@ -157,9 +157,9 @@ var QUnit = {
 			} catch(e) {
 				QUnit.ok( false, "Teardown failed on " + name + ": " + e.message );
 			}
-    });
+    	}, true);
 
-    synchronize(function() {
+    	synchronize(function() {
 			try {
 				QUnit.reset();
 			} catch(e) {
@@ -254,7 +254,7 @@ var QUnit = {
 			if ( !window.setTimeout && !config.queue.length ) {
 				done();
 			}
-		});
+		}, true);
 
 		if ( window.setTimeout && !config.doneTimer ) {
 			config.doneTimer = window.setTimeout(function(){
@@ -361,7 +361,22 @@ var QUnit = {
 			jQuery.ajaxSettings = extend({}, config.ajaxSettings);
 		}
 	},
-	
+	restart : function(){
+        this.init();
+        for(var i =0; i < config.cachelist.length; i++){
+            synchronize(config.cachelist[i]);
+        }
+		if (window.setTimeout && !config.doneTimer) {
+			config.doneTimer = window.setTimeout(function(){
+				if (!config.queue.length) {
+					done();
+				}
+				else {
+					synchronize(done);
+				}
+			}, 13);
+		}
+    },
 	/**
 	 * Trigger an event on an element.
 	 *
@@ -406,7 +421,9 @@ var config = {
 	queue: [],
 
 	// block until document ready
-	blocking: true
+	blocking: true,
+	//a list of everything to run
+	cachelist : []
 };
 
 // Load paramaters
@@ -603,14 +620,15 @@ function push(result, actual, expected, message) {
 	QUnit.ok( result, message + ", expected: " + QUnit.jsDump.parse(expected) + " result: " + QUnit.jsDump.parse(actual) );
 }
 
-function synchronize( callback ) {
+function synchronize( callback , save) {
 	config.queue.push( callback );
-
+    if(save){
+		config.cachelist.push( callback )
+	}
 	if ( config.autorun && !config.blocking ) {
 		process();
 	}
 }
-
 function process() {
 	var start = (new Date()).getTime();
 
